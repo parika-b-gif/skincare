@@ -122,6 +122,35 @@
   color: var(--rose);
   font-size: 11px;
 }
+.currency-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  margin-right: 4px;
+}
+.currency-toggle:hover {
+  border-color: var(--green);
+  background: rgba(101, 119, 107, 0.08);
+}
+.currency-toggle .currency-symbol {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 13px;
+}
+.currency-toggle .currency-code {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
 .menu-button {
   display: none;
 }

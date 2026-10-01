@@ -108,6 +108,25 @@ function ShopProvider({ children }) {
     () => localStorage.getItem("luma-theme") === "dark",
   );
   const [loading, setLoading] = useState(false);
+  const [currency, setCurrency] = useState(
+    () => localStorage.getItem("luma-currency") || "INR",
+  );
+
+  useEffect(() => {
+    localStorage.setItem("luma-currency", currency);
+  }, [currency]);
+
+  const formatPrice = useCallback(
+    (amount) => {
+      const num = Number(amount) || 0;
+      if (currency === "INR") {
+        const inrAmount = Math.round(num * 83);
+        return `₹${inrAmount.toLocaleString("en-IN")}`;
+      }
+      return `$${num.toFixed(2)}`;
+    },
+    [currency],
+  );
 
   const [sessionId] = useState(() => {
     let sid = localStorage.getItem("session-id");
@@ -811,6 +830,9 @@ function ShopProvider({ children }) {
       saveJournal,
       loadAdminData,
       authHeaders,
+      currency,
+      setCurrency,
+      formatPrice,
     }),
     [
       products,
@@ -849,6 +871,8 @@ function ShopProvider({ children }) {
       saveJournal,
       loadAdminData,
       authHeaders,
+      currency,
+      formatPrice,
     ],
   );
 
@@ -865,8 +889,17 @@ function useShop() {
 }
 
 function Header() {
-  const { cart, wishlist, darkMode, setDarkMode, user, logout, backendStatus } =
-    useShop();
+  const {
+    cart,
+    wishlist,
+    darkMode,
+    setDarkMode,
+    user,
+    logout,
+    backendStatus,
+    currency,
+    setCurrency,
+  } = useShop();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -918,6 +951,17 @@ function Header() {
             {backendStatus === "connected" ? "API Online" : "Connecting"}
           </small>
         </div>
+
+        {/* Currency Switcher */}
+        <button
+          className="currency-toggle"
+          onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
+          title={`Active currency: ${currency}. Click to switch to ${currency === "INR" ? "USD ($)" : "INR (₹)"}`}
+          aria-label="Toggle currency"
+        >
+          <span className="currency-symbol">{currency === "INR" ? "₹" : "$"}</span>
+          <span className="currency-code">{currency}</span>
+        </button>
 
         <button
           className="icon-button"
@@ -1181,6 +1225,8 @@ function AdminPage() {
     saveJournal,
     loadAdminData,
     loading,
+    formatPrice,
+    currency,
   } = useShop();
 
   const [newProduct, setNewProduct] = useState({
@@ -1307,7 +1353,7 @@ function AdminPage() {
 
       <div className="admin-stats">
         <div>
-          <strong>${totalRevenue.toFixed(2)}</strong>
+          <strong>{formatPrice(totalRevenue)}</strong>
           <span>Total revenue</span>
         </div>
         <div>
@@ -1367,7 +1413,7 @@ function AdminPage() {
             type="number"
             min="0"
             step="0.01"
-            placeholder="Price ($)"
+            placeholder={`Price (${currency === "INR" ? "₹ INR" : "$ USD"})`}
             value={newProduct.price}
             onChange={(event) =>
               setNewProduct({ ...newProduct, price: event.target.value })
@@ -1397,7 +1443,7 @@ function AdminPage() {
               <span>
                 <strong>{product.name}</strong>
                 <small>
-                  {product.category} · ${product.price} · {product.size}
+                  {product.category} · {formatPrice(product.price)} · {product.size}
                 </small>
               </span>
               <b
@@ -1435,9 +1481,9 @@ function AdminPage() {
                 <span>
                   <strong>{order.id}</strong>
                   <small>
-                    {order.customer?.name} ({order.customer?.email}) · $
-                    {order.total?.toFixed?.(2) || order.total} ·{" "}
-                    {order.items?.length} items · {order.date || order.createdAt}
+                    {order.customer?.name} ({order.customer?.email}) ·{" "}
+                    {formatPrice(order.total)} · {order.items?.length} items ·{" "}
+                    {order.date || order.createdAt}
                   </small>
                 </span>
                 <select
@@ -1615,7 +1661,7 @@ function AdminPage() {
 }
 
 function ProductCard({ product }) {
-  const { wishlist, toggleWishlist, addToCart } = useShop();
+  const { wishlist, toggleWishlist, addToCart, formatPrice } = useShop();
   const wished = wishlist.includes(product.id);
   const [added, setAdded] = useState(false);
 
@@ -1658,7 +1704,7 @@ function ProductCard({ product }) {
         </button>
       </div>
       <div className="product-meta">
-        <span>${product.price}</span>
+        <span>{formatPrice(product.price)}</span>
         <span className="rating">
           ★ {product.rating} <em>({product.reviews})</em>
         </span>
@@ -1668,7 +1714,7 @@ function ProductCard({ product }) {
 }
 
 function ShopPage() {
-  const { products, loading } = useShop();
+  const { products, loading, formatPrice } = useShop();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") || "");
   const [sort, setSort] = useState("featured");
@@ -1758,7 +1804,7 @@ function ShopPage() {
             ))}
             <div className="price-filter">
               <p className="filter-label">
-                Price up to <strong>${maxPrice}</strong>
+                Price up to <strong>{formatPrice(maxPrice)}</strong>
               </p>
               <input
                 type="range"
@@ -1920,6 +1966,7 @@ function ProductPage() {
     addReview,
     deleteReview,
     user,
+    formatPrice,
   } = useShop();
 
   const product = products.find((item) => item.id === Number(id));
@@ -2016,7 +2063,7 @@ function ProductPage() {
           </div>
           <p className="detail-description">{product.description}</p>
           <div className="detail-price">
-            ${product.price}
+            {formatPrice(product.price)}
             <span>
               {product.size} · {stock > 0 ? `${stock} in stock` : "Out of stock"}
             </span>
@@ -2045,7 +2092,7 @@ function ProductPage() {
           <div className="detail-note">
             <span>✦</span>
             <p>
-              Free shipping on orders over $50
+              Free shipping on orders over {formatPrice(50)}
               <br />
               <span>Easy returns within 30 days</span>
             </p>
@@ -2138,7 +2185,7 @@ function ProductPage() {
 }
 
 function CartPage() {
-  const { cart, updateQuantity, removeFromCart } = useShop();
+  const { cart, updateQuantity, removeFromCart, formatPrice } = useShop();
   const subtotal = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
@@ -2168,7 +2215,7 @@ function CartPage() {
                 <div className="cart-item-info">
                   <Link to={`/product/${item.id}`}>{item.name}</Link>
                   <span>
-                    {item.size} · ${item.price}
+                    {item.size} · {formatPrice(item.price)}
                   </span>
                   <div className="quantity">
                     <button
@@ -2200,21 +2247,21 @@ function CartPage() {
             <p className="filter-label">Order summary</p>
             <div className="summary-line">
               <span>Subtotal</span>
-              <b>${subtotal.toFixed(2)}</b>
+              <b>{formatPrice(subtotal)}</b>
             </div>
             <div className="summary-line">
               <span>Estimated shipping</span>
-              <b>{subtotal >= 50 ? "Free" : "$5.00"}</b>
+              <b>{subtotal >= 50 ? "Free" : formatPrice(5)}</b>
             </div>
             <hr />
             <div className="summary-total">
               <span>Estimated total</span>
-              <b>${(subtotal + (subtotal >= 50 ? 0 : 5)).toFixed(2)}</b>
+              <b>{formatPrice(subtotal + (subtotal >= 50 ? 0 : 5))}</b>
             </div>
 
             <p className="secure-note" style={{ margin: "1rem 0" }}>
               {freeShippingNeeded > 0 ? (
-                <>✦ Add ${freeShippingNeeded.toFixed(2)} more for Free Shipping</>
+                <>✦ Add {formatPrice(freeShippingNeeded)} more for Free Shipping</>
               ) : (
                 <>✦ You have unlocked Free Standard Shipping!</>
               )}
@@ -2493,10 +2540,10 @@ function ContactPage() {
 }
 
 function CheckoutPage() {
-  const { cart, placeOrder, user, quickLogin } = useShop();
+  const { cart, placeOrder, user, quickLogin, formatPrice, currency } = useShop();
   const [email, setEmail] = useState(() => user?.email || "");
   const [name, setName] = useState(() => user?.name || "");
-  const [country, setCountry] = useState("US");
+  const [country, setCountry] = useState(() => (currency === "INR" ? "IN" : "US"));
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -2608,7 +2655,7 @@ function CheckoutPage() {
               }}
             >
               <span>Total Paid:</span>
-              <span>${placedOrder.total?.toFixed?.(2) || placedOrder.total}</span>
+              <span>{formatPrice(placedOrder.total)}</span>
             </div>
           </div>
 
@@ -2751,34 +2798,34 @@ function CheckoutPage() {
                 <span>
                   {item.name} × {item.quantity}
                 </span>
-                <b>${(item.price * item.quantity).toFixed(2)}</b>
+                <b>{formatPrice(item.price * item.quantity)}</b>
               </div>
             ))}
           </div>
           <hr />
           <div className="summary-line">
             <span>Subtotal</span>
-            <b>${subtotal.toFixed(2)}</b>
+            <b>{formatPrice(subtotal)}</b>
           </div>
           <div className="summary-line">
             <span>Shipping ({selectedCountry?.name})</span>
-            <b>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</b>
+            <b>{shipping === 0 ? "Free" : formatPrice(shipping)}</b>
           </div>
           <div className="summary-line">
             <span>Estimated tax</span>
-            <b>$0.00 (Included)</b>
+            <b>{formatPrice(0)} (Included)</b>
           </div>
           <hr />
           <div className="summary-total">
             <span>Total</span>
-            <b>${total.toFixed(2)}</b>
+            <b>{formatPrice(total)}</b>
           </div>
           <p className="secure-note">
             ✦ Full Stack REST API Order Processing
             <br />✦{" "}
             {subtotal >= 50
               ? "Free standard shipping unlocked"
-              : `Standard shipping: $${shipping.toFixed(2)}`}
+              : `Standard shipping: ${formatPrice(shipping)}`}
           </p>
         </aside>
       </div>
