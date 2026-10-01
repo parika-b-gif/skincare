@@ -855,6 +855,7 @@ function ShopProvider({ children }) {
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 }
 
+
 function useShop() {
   const context = useContext(ShopContext);
   if (!context) {
