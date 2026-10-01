@@ -132,6 +132,7 @@ const categoryMedia = {
     "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=900&q=85",
   "Lip Care":
     "https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=900&q=85",
+
 };
 
 async function connectDatabase() {
@@ -392,6 +393,7 @@ app.post("/api/auth/login", async (request, response) => {
     const user = await usersCollection.findOne({ email });
     if (
       !user ||
+      !user.passwordHash ||
       !(await verifyPassword(
         String(request.body.password || ""),
         user.passwordHash,
