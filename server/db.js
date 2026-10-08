@@ -10,17 +10,37 @@ class JSONCollection {
   }
 
   _match(doc, query) {
+    if (!query || typeof query !== "object") return true;
+    if (query.$or && Array.isArray(query.$or)) {
+      if (!query.$or.some((subQ) => this._match(doc, subQ))) return false;
+    }
     for (const [key, val] of Object.entries(query)) {
+      if (key === "$or") continue;
       if (key === "_id") {
         if (!doc._id) return false;
         if (doc._id.toString() !== val?.toString()) return false;
         continue;
       }
-      if (val && typeof val === "object") {
+      if (val && typeof val === "object" && !(val instanceof RegExp)) {
         if ("$lte" in val && doc[key] > val.$lte) return false;
         if ("$lt" in val && doc[key] >= val.$lt) return false;
         if ("$gte" in val && doc[key] < val.$gte) return false;
         if ("$gt" in val && doc[key] <= val.$gt) return false;
+        if ("$in" in val && (!Array.isArray(val.$in) || !val.$in.includes(doc[key]))) return false;
+        if ("$nin" in val && Array.isArray(val.$nin) && val.$nin.includes(doc[key])) return false;
+        if ("$ne" in val && doc[key] === val.$ne) return false;
+        if ("$exists" in val) {
+          const exists = doc[key] !== undefined;
+          if (exists !== Boolean(val.$exists)) return false;
+        }
+        if ("$regex" in val) {
+          const reg = new RegExp(val.$regex, val.$options || "i");
+          if (!reg.test(String(doc[key] ?? ""))) return false;
+        }
+        continue;
+      }
+      if (val instanceof RegExp) {
+        if (!val.test(String(doc[key] ?? ""))) return false;
         continue;
       }
       if (doc[key] !== val) return false;
@@ -31,6 +51,8 @@ class JSONCollection {
   find(query = {}) {
     const docs = this.getDocs();
     let matches = docs.filter((d) => this._match(d, query));
+    let skipCount = 0;
+    let limitCount = Infinity;
 
     const cursor = {
       sort: (sortObj) => {
@@ -44,7 +66,16 @@ class JSONCollection {
         }
         return cursor;
       },
-      toArray: async () => matches.map((m) => ({ ...m })),
+      skip: (n) => {
+        skipCount = Number(n) || 0;
+        return cursor;
+      },
+      limit: (n) => {
+        limitCount = Number(n) || Infinity;
+        return cursor;
+      },
+      count: async () => matches.length,
+      toArray: async () => matches.slice(skipCount, skipCount + limitCount).map((m) => ({ ...m })),
     };
     return cursor;
   }
@@ -226,6 +257,10 @@ export async function initDatabase({
         contentCollection: database.collection("content"),
         usersCollection: database.collection("users"),
         contactMessagesCollection: database.collection("contactMessages"),
+        couponsCollection: database.collection("coupons"),
+        addressesCollection: database.collection("addresses"),
+        passwordResetsCollection: database.collection("passwordResets"),
+        emailsCollection: database.collection("emails"),
       };
 
       // Seed admin user
@@ -270,9 +305,12 @@ export async function initDatabase({
           passwordHash: await hashPassword("password123"),
           role: "customer",
           name: "Alia Stone",
+          phone: "+1 (555) 349-2810",
           createdAt: new Date(),
         });
       }
+
+      await seedStoreData(collections);
 
       return { collections, dbType: "mongodb" };
     } catch (err) {
@@ -292,6 +330,10 @@ export async function initDatabase({
     users: [],
     contactMessages: [],
     content: [],
+    coupons: [],
+    addresses: [],
+    passwordResets: [],
+    emails: [],
   };
 
   if (existsSync(storePath)) {
@@ -313,6 +355,10 @@ export async function initDatabase({
     "users",
     "contactMessages",
     "content",
+    "coupons",
+    "addresses",
+    "passwordResets",
+    "emails",
   ]) {
     if (!Array.isArray(store[key])) store[key] = [];
   }
@@ -345,6 +391,14 @@ export async function initDatabase({
       () => store.contactMessages,
       saveFn,
     ),
+    couponsCollection: new JSONCollection("coupons", () => store.coupons, saveFn),
+    addressesCollection: new JSONCollection("addresses", () => store.addresses, saveFn),
+    passwordResetsCollection: new JSONCollection(
+      "passwordResets",
+      () => store.passwordResets,
+      saveFn,
+    ),
+    emailsCollection: new JSONCollection("emails", () => store.emails, saveFn),
   };
 
   // Ensure admin user exists
@@ -372,10 +426,101 @@ export async function initDatabase({
       passwordHash: await hashPassword("password123"),
       role: "customer",
       name: "Alia Stone",
+      phone: "+1 (555) 349-2810",
       createdAt: new Date(),
     });
   }
 
+  await seedStoreData(collections);
+
   console.log(`[DB] Local JSON database initialized from ${storePath}`);
   return { collections, dbType: "local_json" };
+}
+
+async function seedStoreData(collections) {
+  // Seed initial coupons
+  const defaultCoupons = [
+    {
+      code: "LUMA10",
+      discountType: "percentage",
+      discountValue: 10,
+      minOrder: 0,
+      maxUses: 500,
+      usedCount: 0,
+      active: true,
+      description: "10% off your entire botanical order",
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      code: "LUMA20",
+      discountType: "percentage",
+      discountValue: 20,
+      minOrder: 50,
+      maxUses: 200,
+      usedCount: 0,
+      active: true,
+      description: "20% off orders over $50",
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      code: "WELCOME5",
+      discountType: "fixed",
+      discountValue: 5,
+      minOrder: 25,
+      maxUses: 1000,
+      usedCount: 0,
+      active: true,
+      description: "Flat $5 / ₹400 off your welcome ritual",
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
+
+  for (const coup of defaultCoupons) {
+    const existing = await collections.couponsCollection.findOne({ code: coup.code });
+    if (!existing) {
+      await collections.couponsCollection.insertOne({
+        ...coup,
+        createdAt: new Date(),
+      });
+    }
+  }
+
+  // Seed demo addresses for alia@luma.skin
+  const demoAddresses = [
+    {
+      id: "addr-home-1",
+      userEmail: "alia@luma.skin",
+      tag: "Home",
+      fullName: "Alia Stone",
+      phone: "+1 (555) 349-2810",
+      address: "742 Evergreen Terrace",
+      city: "San Francisco",
+      state: "CA",
+      postalCode: "94102",
+      country: "US",
+      isDefault: true,
+      createdAt: new Date(),
+    },
+    {
+      id: "addr-office-2",
+      userEmail: "alia@luma.skin",
+      tag: "Studio",
+      fullName: "Alia Stone",
+      phone: "+1 (555) 349-2810",
+      address: "100 Botanical Way, Suite 4B",
+      city: "San Francisco",
+      state: "CA",
+      postalCode: "94107",
+      country: "US",
+      isDefault: false,
+      createdAt: new Date(),
+    },
+  ];
+
+  for (const addr of demoAddresses) {
+    const existing = await collections.addressesCollection.findOne({ id: addr.id });
+    if (!existing) {
+      await collections.addressesCollection.insertOne(addr);
+    }
+  }
 }

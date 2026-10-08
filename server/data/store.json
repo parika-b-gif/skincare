@@ -385,8 +385,41 @@
       "inventory": 25
     }
   ],
-  "carts": [],
-  "wishlists": [],
+  "carts": [
+    {
+      "_id": "ce6745f2-197b-4423-be6e-e2651807cce7",
+      "items": [
+        {
+          "productId": 1,
+          "quantity": 4
+        },
+        {
+          "productId": 2,
+          "quantity": 1
+        },
+        {
+          "productId": 3,
+          "quantity": 1
+        },
+        {
+          "productId": 4,
+          "quantity": 1
+        },
+        {
+          "productId": 5,
+          "quantity": 1
+        }
+      ],
+      "updatedAt": "2026-10-08T13:12:30.543Z"
+    }
+  ],
+  "wishlists": [
+    {
+      "_id": "ce6745f2-197b-4423-be6e-e2651807cce7",
+      "productIds": [],
+      "updatedAt": "2026-10-08T12:59:50.122Z"
+    }
+  ],
   "orders": [
     {
       "id": "LUM-94821",
@@ -576,5 +609,80 @@
       "address": "24 Orchard Street\nNew York, NY",
       "hours": "Monday to Friday, 9am to 5pm"
     }
-  ]
+  ],
+  "coupons": [
+    {
+      "code": "LUMA10",
+      "discountType": "percentage",
+      "discountValue": 10,
+      "minOrder": 0,
+      "maxUses": 500,
+      "usedCount": 0,
+      "active": true,
+      "description": "10% off your entire botanical order",
+      "expiresAt": "2027-10-08T06:35:04.866Z",
+      "createdAt": "2026-10-08T06:35:04.867Z",
+      "_id": "6ac7399871cebeb1b2981dd2"
+    },
+    {
+      "code": "LUMA20",
+      "discountType": "percentage",
+      "discountValue": 20,
+      "minOrder": 50,
+      "maxUses": 200,
+      "usedCount": 0,
+      "active": true,
+      "description": "20% off orders over $50",
+      "expiresAt": "2027-10-08T06:35:04.867Z",
+      "createdAt": "2026-10-08T06:35:04.923Z",
+      "_id": "6ac7399871cebeb1b2981dd3"
+    },
+    {
+      "code": "WELCOME5",
+      "discountType": "fixed",
+      "discountValue": 5,
+      "minOrder": 25,
+      "maxUses": 1000,
+      "usedCount": 0,
+      "active": true,
+      "description": "Flat $5 / ₹400 off your welcome ritual",
+      "expiresAt": "2027-10-08T06:35:04.867Z",
+      "createdAt": "2026-10-08T06:35:04.975Z",
+      "_id": "6ac7399871cebeb1b2981dd4"
+    }
+  ],
+  "addresses": [
+    {
+      "id": "addr-home-1",
+      "userEmail": "alia@luma.skin",
+      "tag": "Home",
+      "fullName": "Alia Stone",
+      "phone": "+1 (555) 349-2810",
+      "address": "742 Evergreen Terrace",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94102",
+      "country": "US",
+      "isDefault": true,
+      "createdAt": "2026-10-08T06:35:05.026Z",
+      "_id": "6ac7399971cebeb1b2981dd5"
+    },
+    {
+      "id": "addr-office-2",
+      "userEmail": "alia@luma.skin",
+      "tag": "Studio",
+      "fullName": "Alia Stone",
+      "phone": "+1 (555) 349-2810",
+      "address": "100 Botanical Way, Suite 4B",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94107",
+      "country": "US",
+      "isDefault": false,
+      "createdAt": "2026-10-08T06:35:05.026Z",
+      "_id": "6ac7399971cebeb1b2981dd6"
+    }
+  ],
+  "passwordResets": [],
+  "emails": []
 }
